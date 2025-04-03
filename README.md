@@ -23,12 +23,12 @@ Note: The esm3-large-multimer model requires an API key.
 See the **synergy** directory for datasets of collected predictors, and code to evaluate how the predictors work together.
 
 <div align="center">
-  <img src="images/cr6261_h1_mean.png" alt="predictions scatterplot" width="400"/>
+  <img src="images/cr6261_h1_mean.png" alt="predictions scatterplot" width="700"/>
   <p>Models using esm3 iPLL are red, models using ddG are blue, and models using both are purple.</p>
 
-  <img src="images/cr6261_ddG_esm3-iPLL.png" alt="predictions scatterplot" width="400"/>
+  <img src="images/cr6261_ddG_esm3-iPLL.png" alt="predictions scatterplot" width="500"/>
 
-  <img src="images/correlations_cr6261.png" alt="correlation heatmap" width="200"/>
+  <img src="images/correlations_cr6261.png" alt="correlation heatmap" width="400"/>
   <p>esm3 iPLL is not highly correlated to the other predictors</p></div>
 
 
