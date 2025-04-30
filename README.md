@@ -33,6 +33,7 @@ See the **synergy** directory for datasets of collected predictors, and code to 
 
 
 ## Acknowledgements
+Shell Lab & Shea Group
 Ventura Rivera - coauthor of the esm3 iPLL scripts here.  
 EvolutionaryScale team for access of the model, and Neil Thomas for advice/brainstorming.  
 Authors of esmIF, ProteinMPNN, Rosetta ddG, and Shanker, et. al. for code to build these datasets.
