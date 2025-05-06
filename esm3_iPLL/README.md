@@ -15,8 +15,8 @@ python compute_iPLL.py \
     --sel2 "segid A or segid B"
 ```
 Arguments:
-- `pdb`     : Path to the reference PDB complex.
-- `fasta`   : Path to FASTA file containing sequences to score.
+- `pdb`       : Path to the reference PDB complex.
+- `sequence`  : Path to FASTA file containing sequences to score, or a single sequence as a string.
 - `--chain`   : Chain ID in the PDB file to replace with each FASTA sequence.
 - `--sel1`    : MDAnalysis selection string for interface side 1 (e.g. binder).
 - `--sel2`    : MDAnalysis selection string for interface side 2 (e.g. antigen).
