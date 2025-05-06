@@ -17,6 +17,9 @@ import os
 import threading
 import csv
 import concurrent.futures
+import MDAnalysis as mda
+from MDAnalysis.lib.distances import distance_array
+
 
 
 def _limit_api_rate(calls_per_second: float = 5.0):
@@ -273,3 +276,75 @@ class ESMUtils:
         pae_matrix = np.delete(pae_matrix, obj=non_aa_indexes, axis=0)
 
         return pae_matrix
+
+    def define_interface(
+        self,
+        pdb_path: str,
+        selection_1: str,
+        selection_2: str,
+        distance_cutoff_nm: float = 1.0,
+    ) -> np.ndarray:
+        """
+        Boolean token mask (BOS + residues + breaks + EOS) where True marks
+        residues whose Cα–Cα distance across the two selections ≤ cutoff.
+
+        The residue order now follows **file‑order Cα atoms**, identical to
+        your mdtraj workflow.
+        """
+        u = mda.Universe(pdb_path)
+
+        # ---- selections -------------------------------------------------
+        res1 = u.select_atoms(selection_1).residues
+        res2 = u.select_atoms(selection_2).residues
+        ca1  = res1.atoms.select_atoms("name CA")
+        ca2  = res2.atoms.select_atoms("name CA")
+        if len(ca1) == 0 or len(ca2) == 0:
+            raise ValueError("Selections returned no Cα atoms!")
+
+        # ---- distance cutoff -------------------------------------------
+        cutoff_A = distance_cutoff_nm * 10.0
+        dmat = distance_array(ca1.positions, ca2.positions)
+
+        # ---- interface residue *objects* -------------------------------
+        interface_res: Set[Any] = set()
+        for i, atom in enumerate(ca1):
+            if np.any(dmat[i] <= cutoff_A):
+                interface_res.add(atom.residue)
+        for j, atom in enumerate(ca2):
+            if np.any(dmat[:, j] <= cutoff_A):
+                interface_res.add(atom.residue)
+
+        # ---- establish *token order* via file‑order Cα list ------------
+        # this replicates: [atom.index for atom in topology.atoms if name=="CA"]
+        ca_all = u.select_atoms("name CA")   # tipsy = file order
+        residue_order: List[Any] = []
+        seen: Set[int] = set()
+        for atom in ca_all:
+            rid = atom.residue.ix                          # unique integer id
+            if rid not in seen:
+                residue_order.append(atom.residue)
+                seen.add(rid)
+
+        # ---- sanity check: residue_order length ------------------------
+        n_res = len(residue_order)
+        expected_tokens = n_res + 2 + (self.protein.sequence.count("|"))
+        if expected_tokens != len(self.protein.sequence) + 2:
+            raise RuntimeError("Residue/token order mismatch – check chain breaks.")
+
+        # ---- build mask -------------------------------------------------
+        mask = np.zeros(len(self.protein.sequence) + 2, dtype=bool)  # + BOS/EOS
+        token_idx = 1   # skip BOS
+        ro_iter = iter(residue_order)
+
+        for char in self.protein.sequence:
+            if char == "|":                # chain‑break token
+                token_idx += 1
+                continue
+
+            res = next(ro_iter)
+            if res in interface_res:
+                mask[token_idx] = True
+            token_idx += 1
+
+        self.interface_mask = mask
+        return mask
