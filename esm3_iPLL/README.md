@@ -32,12 +32,11 @@ We consider residues from each selection whose alpha carbons are within 1.0 nm o
 
 ## Installation
 In a fresh environment, install the following:
-1. **ESM3**:
+1. **ESM3** (has SDK to interact with ESM's models via forge):
    ```
    pip install esm3
    ```
-2. **MDAnalysis** and helper packages (for interface definition and structure parsing):
+2. **MDAnalysis** (for interface definition and structure parsing):
    ```
-   conda install -c conda-forge mdanalysis biopython tqdm pandas
-   # you may prefer pip installing these
+   pip install MDAnalysis
    ```
