@@ -11,7 +11,7 @@ the interface‑averaged pseudo log‑likelihood (iPLL), and write each result
 immediately to a separate CSV for checkpointing. Multiple workers can
 run in parallel and append safely.
 """
-import os, csv, gc, argparse, sys, multiprocessing
+import os, csv, gc, argparse, sys, multiprocessing, traceback
 from typing import Tuple, Optional
 import torch
 import pandas as pd
@@ -29,6 +29,7 @@ CHAIN_ID:          str              = ""
 SEL1:              str              = ""
 SEL2:              str              = ""
 DISTANCE_CUTOFF:   float            = 1.0
+SEQUENCE_OF_CONCERN: bool = False
 
 # Suppress warnings from MDAnalysis about guessed elements
 warnings.filterwarnings("ignore", message=".*elements were guessed from atom name", category=UserWarning)
@@ -64,13 +65,14 @@ def chain_order(pdb_path: str):
     return order
 
 def init_worker(esm_key: str, model_name: str,
-                chain_id: str, sel1: str, sel2: str):
+                chain_id: str, sel1: str, sel2: str, sequence_of_concern: bool):
     """Initializer run in each process."""
-    global utils_global, MODEL_NAME, CHAIN_ID, SEL1, SEL2
+    global utils_global, MODEL_NAME, CHAIN_ID, SEL1, SEL2, SEQUENCE_OF_CONCERN
     MODEL_NAME = model_name
     CHAIN_ID   = chain_id
     SEL1       = sel1
     SEL2       = sel2
+    SEQUENCE_OF_CONCERN = sequence_of_concern
     utils_global = ESMUtils(esm3_api_token=esm_key, model_name=model_name)
 
 def process_pair(task: Tuple[str,str]) -> Optional[Tuple[str,str,float]]:
@@ -108,17 +110,17 @@ def process_pair(task: Tuple[str,str]) -> Optional[Tuple[str,str,float]]:
         protein = ESMProtein(
             sequence=complex_seq,
             coordinates=prot_base.coordinates.clone(),
-            potential_sequence_of_concern=args.sequence_of_concern,
+            potential_sequence_of_concern=SEQUENCE_OF_CONCERN,
         )
 
         try:
             _, nll, _ = utils_global.get_logits(protein)
+            score = float((-nll).cpu().numpy()[int_mask].mean())
+
         except Exception as e:
-            print(f"[ERROR] get_logits failed for row {row_idx}: {e}")
+            print(f"[ERROR] get_logits failed for {pdb_path} {sequence}: {e}")
             print("There may be an issue with your ESMProtein object:\n", protein)
             traceback.print_exc()
-            return row_idx, None
-        score = float((-nll).cpu().numpy()[int_mask].mean())
 
         # optional cleanup
         if MODEL_NAME == "local-gpu":
@@ -171,7 +173,7 @@ def main():
     pool = multiprocessing.Pool(
         processes=workers,
         initializer=init_worker,
-        initargs=(esm_key, args.model, args.chain, args.sel1, args.sel2)
+        initargs=(esm_key, args.model, args.chain, args.sel1, args.sel2, args.sequence_of_concern),
     )
 
     # As each result arrives, append it under lock
