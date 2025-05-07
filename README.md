@@ -14,7 +14,7 @@ Datasets:
 
 We may add more predictors later, and you can contribute your own as well.  
 
-esm3-large-multimer is a new 98B parameter model by [EvolutionaryScale](https://www.evolutionaryscale.ai/) and its **i**nterface **p**seudo**l**og**l**ikelihood (calculated in a single pass) appears to usefully correlate to binding affinity (K<sub>D</sub>) in some datasets. It seems to synergize with the other predictors and isn't very correlated to ddG, MPNN score, or esmIF log likelihood (meanwhile MPNN score and esmIF log likelihood are quite correlated).
+esm3-large-multimer (2024-09) is a 98B parameter model by [EvolutionaryScale](https://www.evolutionaryscale.ai/) and its **i**nterface **p**seudo**l**og**l**ikelihood (calculated in a single pass) appears to usefully correlate to binding affinity (K<sub>D</sub>) in some datasets. It seems to synergize with the other predictors and isn't very correlated to ddG, MPNN score, or esmIF log likelihood (meanwhile MPNN score and esmIF log likelihood are quite correlated).
 
 See the **esm3_iPLL** directory for code to calculate esm3 iPLL.  
 Note: An esm3 API key is required.
