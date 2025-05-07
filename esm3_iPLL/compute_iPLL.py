@@ -10,13 +10,13 @@ Example
 -------
 # From FASTA file
 python compute_iPLL.py data/3gbn_ablh_fvar.pdb data/cr6261_3gbn_hc_lib.fasta \
-    --chain H --sel1 "segid H or segid L" --sel2 "segid A or segid B" --workers 8
+    --chain H --sel1 "segid H or segid L" --sel2 "segid A or segid B" --workers 8 --sequence_of_concern
 
 # From string
 python compute_iPLL.py data/3gbn_ablh_fvar.pdb "EVQLVESGAEV..." \
     --chain H --sel1 "segid H or segid L" --sel2 "segid A or segid B" --workers 1
 """
-import os, gc, csv, argparse
+import os, gc, csv, argparse, traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Set
 import torch
@@ -32,12 +32,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("pdb", help="Reference complex PDB")
     p.add_argument("sequence", help="Either a path to FASTA file or a raw sequence string")
     p.add_argument("--chain", required=True, help="Chain ID to replace in the PDB")
-    p.add_argument("--sel1", required=True, help="MDAnalysis selection for first interface part")
-    p.add_argument("--sel2", required=True, help="MDAnalysis selection for second interface part")
+    p.add_argument("--sel1", required=True, help="MDAnalysis selection for first of interface")
+    p.add_argument("--sel2", required=True, help="MDAnalysis selection for second side of interface")
     p.add_argument("--model", default="esm3-large-multimer-2024-09", help="ESM-3 model name")
     p.add_argument("--key", default=None, help="ESM-3 API key (or set $ESM3_KEY)")
-    p.add_argument("--workers", type=int, default=4, help="Parallel workers (default: 4)")
-    p.add_argument("--out", default=None, help="Output CSV path")
+    p.add_argument("-w","--workers", type=int, default=4, help="Parallel workers (default: 4)")
+    p.add_argument("-o","--out", default=None, help="Output CSV path")
+    p.add_argument("--sequence_of_concern", action="store_true", help="Set flag if you're looking at a concern (you can ask EvolutionaryScale to enable this for a virus project, for example)")
     return p.parse_args()
 
 def chain_order_from_pdb(pdb_path: str) -> List[str]:
@@ -75,13 +76,13 @@ def main():
             "header": [r.id.strip() for r in records],
             "sequence": [str(r.seq) for r in records]
         })
-        out_csv = args.out or os.path.join(os.path.dirname(input_arg), "iPLL_RESULTS.csv")
+        out_csv = args.out or os.path.join(os.path.dirname(input_arg), "iPLL_results.csv")
     else:
         seq_df = pd.DataFrame([{
             "header": "input_seq",
             "sequence": input_arg.strip()
         }])
-        out_csv = args.out or "iPLL_RESULT_single.csv"
+        out_csv = args.out or "iPLL_result.csv"
 
     utils = ESMUtils(esm3_api_token=esm_key, model_name=model_name)
     protein_base, protein_complex = utils.get_protein_from_pdb(pdb_path, is_protein_complex=True)
@@ -107,8 +108,14 @@ def main():
         split = base_split.copy()
         split[chain_idx] = new_seq
         complex_seq = "|".join(split)
-        protein = ESMProtein(sequence=complex_seq, coordinates=protein_base.coordinates.clone(), potential_sequence_of_concern=True)
-        _, nll, _ = utils.get_logits(protein)
+        protein = ESMProtein(sequence=complex_seq, coordinates=protein_base.coordinates.clone(), potential_sequence_of_concern=args.sequence_of_concern)
+        try:
+            _, nll, _ = utils.get_logits(protein)
+        except Exception as e:
+            print(f"[ERROR] get_logits failed for row {row_idx}: {e}")
+            print("There may be an issue with your ESMProtein object:\n", protein)
+            traceback.print_exc()
+            return row_idx, None
         ipll = float((-nll).cpu().numpy()[int_mask_no_special].mean())
         if model_name == "local-gpu":
             torch.cuda.empty_cache(); gc.collect()

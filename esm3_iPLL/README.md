@@ -2,7 +2,10 @@
 
 esm3-large-multimer (2024-09 model) appears to have an interface pseudologliklihood (iPLL) that is useful as a zero-shot antibody binding affinity predictor in some cases, and it has unique info from popular tools like esm-IF, proteinMPNN, and Rosetta ddG.
 
-We provide a python script `compute_iPLL.py` that allows you to evlauate how mutations (provided in a fasta file) affect esm3's iPLL scores for protein structure that you provide (.pdb).
+We provide a python script `compute_iPLL.py` that allows you to evlauate how mutations (provided in a fasta file) affect esm3's iPLL scores for a protein structure that you provide (.pdb).   
+
+Alternatively you can use `compute_iPLL_from_csv.py` if you have many unique structures to be scored (e.g. in a de novo binder design workflow): just supply the column name containing the pdb files and the column name containing the sequences.
+Scores that are less negative are better.
 
 ## Example
 
@@ -13,6 +16,7 @@ python compute_iPLL.py \
     --chain H \
     --sel1 "segid H or segid L" \
     --sel2 "segid A or segid B"
+    --sequence_of_concern # required when encoding viral proteins, for example
 ```
 Arguments:
 - `pdb`       : Path to the reference PDB complex.
@@ -24,11 +28,22 @@ Arguments:
 - `--workers` : (optional) Number of parallel threads (defaults = 4, must be less than available processors on your machine).
 - `--out`     : (optional) Output CSV path. Default: same dir as FASTA → `iPLL_RESULTS.csv`.
 
-The fasta file must contain sequences for a full chain (e.g. antibody heavy chain) and this chain's ID must be specified (e.g. `--chain H`).
+```
+python compute_iPLL_from_csv.py \
+    pdbs_and_sequences.csv \
+    --pdb-col pdb_file \ # or whatever your column name is
+    --seq-col sequences \ # or whatever your column name is
+    --chain A \
+    --sel1 "segid A" \
+    --sel2 "segid B"
+    --sequence_of_concern
+```
+
+The sequences will replace the sequence of the chain that you specify (e.g. `--chain H`).
 
 Use `--sel1` and `--sel2` to define the chains/residues for each side of the interface. Typically `--sel1` is the binder (e.g. antibody chains) and `--sel2` is the target protein, so for the complex in [PDB: 3GBN](https://www.rcsb.org/structure/3GBN) you would do `--sel1 segid H or segid L --sel2 segid A or segid B` which use [MDAnalysis selection language](https://docs.mdanalysis.org/stable/documentation_pages/selections.html). You are able to select residues liked `resid 10-20` or chains like `chainID B`, for example. 
 
-We consider residues from each selection whose alpha carbons are within 1.0 nm of each other - 1.0 nm was tuned based on five antibody $K_D$ datasets (see ../images/esm3-large-multimer-2024-09_cutoff_sensitivity.png).
+We consider residues from each selection whose alpha carbons are within 1.0 nm of each other. 1.0 nm was tuned based on five antibody $K_D$ datasets (see ../images/esm3-large-multimer-2024-09_cutoff_sensitivity.png).
 
 ## Installation
 In a fresh environment, install the following:
@@ -40,3 +55,4 @@ In a fresh environment, install the following:
    ```
    pip install MDAnalysis
    ```
+If using conda, we recommend initializing an environment with python=3.11, e.g. `conda create -n esm3 python=3.11`
