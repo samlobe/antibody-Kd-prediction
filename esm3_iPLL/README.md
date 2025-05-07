@@ -1,6 +1,6 @@
 # esm3 iPLL scoring
 
-esm3-large-multimer (2024-09 model) appears to have an interface pseudologliklihood (iPLL) that is useful as a zero-shot antibody binding affinity predictor in some cases, and it has unique info from popular tools like esm-IF, proteinMPNN, and Rosetta ddG.
+esm3-large-multimer (2024-09 model) appears to have an interface pseudologlikelihood (iPLL) that is useful as a zero-shot antibody binding affinity predictor in some cases, and it has unique info from popular tools like esm-IF, proteinMPNN, and Rosetta ddG.
 
 We provide a python script `compute_iPLL.py` that allows you to evaluate how mutations (provided in a fasta file) affect esm3's iPLL scores for a protein structure that you provide (.pdb).   
 
